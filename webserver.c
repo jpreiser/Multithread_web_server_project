@@ -128,7 +128,8 @@ int main(int argc, char *argv[])
 		{
 			n_threads = atoi(argv[1]);
 			if(n_threads > 100) n_threads = 100;
-			if(n_threads < 0) {
+			if(n_threads < 0) 
+			{
 				fprintf(stderr, "usage: ./webserver (#_of_threads) (crash_rate(%))\n");
 			}
 		}
