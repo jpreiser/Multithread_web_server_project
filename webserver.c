@@ -25,15 +25,34 @@ pthread_mutex_t mutex;
 
 void single_threaded_server(int sock)
 {
+	int s;
+	while (1)
+	{
+		s = accept(sock, NULL, NULL);
+		if (s < 0) break;
+		process(s);
+	}
+}
+
+void *listener_function(int sock) 
+{
+	printf("Listener Started\n");
+	while (1)
+	{
 		int s;
+		s = accept(sock, NULL, NULL);
+		
+		if (s < 0) break;
 
-		while (1)
-		{
-				s = accept(sock, NULL, NULL);
-				if (s < 0) break;
+		sem_wait(&sem_empty);
+		pthread_mutex_lock(&mutex);
 
-				process(s);
-		}
+		request[in] = s;
+		in = (in + 1) % MAX_REQUEST;
+
+		pthread_mutex_unlock(&mutex);
+		sem_post(&sem_full);
+	}
 }
 
 // Process for taking threads from the listener and consuming them from buffer
@@ -42,13 +61,13 @@ void *consumer(void * to_consume)
 	printf("Consuming\n");
 	while (1)
 	{
-	  int s;
+		int s;
 		sem_wait(&sem_full);
 		pthread_mutex_lock(&mutex);
 		
-		  s = request[out];
-			printf("\nWorker %d Solving Request %d\n", to_consume, s);
-			out = (out + 1) % MAX_REQUEST;
+		s = request[out];
+		printf("\nWorker %d Solving Request %d\n", to_consume, s);
+		out = (out + 1) % MAX_REQUEST;
 
 		pthread_mutex_unlock(&mutex);
 		sem_post(&sem_empty);
@@ -64,41 +83,32 @@ void multi_threaded_server(int sock, int n_thread)
   	sem_init(&sem_empty, 0, MAX_REQUEST);
 	sem_init(&sem_full, 0, 0);
 		
-	/* Listener thread. */
+	/* Listener and Worker threads. */
 	pthread_t workers[n_thread];
 	pthread_t listener;
+
+	int thread_status, i, j, s;
+
+	pthread_create(&listener, NULL, listener_function(sock), NULL);
+
+	for (i=0; i<numThread; i++) 
+	{
+		pthread_create(&workers[i], NULL, consumer, (void *) i);
+	}
 	
-	sem_init(&sem_empty, 0, MAX_REQUEST);
-  	sem_init(&sem_full, 0, 0);
+	while (1) 
+	{
+		for (j=0; j<numThread; j++) {
+		thread_status = pthread_tryjoin_np(workers[j], NULL);
 
-	int thread_status, i;
-
-	pthread_create(&listener, NULL, listen, NULL);
-
-	int s;
-	s = accept(sock, NULL, NULL);
-	if (s < 0) return;
-
-	sem_wait(&sem_empty);
-	pthread_mutex_lock(&mutex);
-
-	request[in] = s;
-	in = (in + 1) % MAX_REQUEST;
-
-	pthread_mutex_unlock(&mutex);
-	sem_post(&sem_full);
-
-	for (i = 0; i < n_thread; i++) {
-		thread_status = pthread_tryjoin_np(workers[i], NULL);
-		
 		if (thread_status == EBUSY) {
-			continue;
+		    continue;
 		}
 
-		pthread_create(&workers[i], NULL, consumer, (void *) i);
+		pthread_create(&workers[j], NULL, consumer, (void *) j);
 		sem_post(&sem_empty);
+		}
 	}
-
 }
 
 
