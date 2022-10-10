@@ -97,10 +97,12 @@ void multi_threaded_server(int sock, int n_threads)
 
 	while (1)
 	{
-		for (j=0; j<n_threads; j++) {
+		for (j=0; j<n_threads; j++) 
+		{
 			thread_status = pthread_tryjoin_np(workers[j], NULL);
 
-			if (thread_status == EBUSY) {
+			if (thread_status == EBUSY) 
+			{
 		    	continue;
 			}
 
@@ -122,22 +124,25 @@ int main(int argc, char *argv[])
 
 		/* Set # of worker thread */
 		n_threads = 0;
-		if(argc > 1) {
-				n_threads = atoi(argv[1]);
-				if(n_threads > 100) n_threads = 100;
-				if(n_threads < 0) {
-						fprintf(stderr, "usage: ./webserver (#_of_threads) (crash_rate(%))\n");
-				}
+		if(argc > 1) 
+		{
+			n_threads = atoi(argv[1]);
+			if(n_threads > 100) n_threads = 100;
+			if(n_threads < 0) {
+				fprintf(stderr, "usage: ./webserver (#_of_threads) (crash_rate(%))\n");
+			}
 		}
 
 		/* Set crash rate */
-		if(n_threads > 0 && argc > 2) {
-				CRASH = atoi(argv[2]);
-				if(CRASH > 30) CRASH = 30;
-				if(CRASH < 0) {
-						fprintf(stderr, "usage: ./webserver (#_of_threads) (crash_rate(%))\n");
-				}
-				printf("[pid %d] CRASH RATE = %d\%\n", getpid(), CRASH);
+		if(n_threads > 0 && argc > 2) 
+		{
+			CRASH = atoi(argv[2]);
+			if(CRASH > 30) CRASH = 30;
+			if(CRASH < 0) 
+			{
+				fprintf(stderr, "usage: ./webserver (#_of_threads) (crash_rate(%))\n");
+			}
+			printf("[pid %d] CRASH RATE = %d\%\n", getpid(), CRASH);
 		}
 
 		/* Initialize a socket */
