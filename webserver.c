@@ -1,26 +1,27 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <arpa/inet.h>
+#include <errno.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 #include "webserver.h"
 
 #define MAX_REQUEST 10
 
+// the buffer to be shared among the threads
 int request[MAX_REQUEST];
 
+int port;
+int numThread;
+int in;
+int out;
+
+// initialization of semaphores and lock
 sem_t sem_full;
 sem_t sem_empty;
 pthread_mutex_t mutex;
-
-void multi_threaded_server(int sock, int n_thread)
-{
-		/* Initialize mutex lock and semaphores */
-		pthread_mutex_init(&mutex, NULL);
-  sem_init(&sem_empty, 0, MAX_REQUEST);
-  sem_init(&sem_full, 0, 0);
-		
-		/* Create a listener thread and "n_thread" worker threads. */
-}
 
 void single_threaded_server(int sock)
 {
@@ -34,6 +35,72 @@ void single_threaded_server(int sock)
 				process(s);
 		}
 }
+
+// Process for taking threads from the listener and consuming them from buffer
+void *consumer(void * to_consume) 
+{
+	printf("Consuming\n");
+	while (1)
+	{
+	  int s;
+		sem_wait(&sem_full);
+		pthread_mutex_lock(&mutex);
+		
+		  s = request[out];
+			printf("\nWorker %d Solving Request %d\n", to_consume, s);
+			out = (out + 1) % MAX_REQUEST;
+
+		pthread_mutex_unlock(&mutex);
+		sem_post(&sem_empty);
+		
+		process(s);
+	}
+}
+
+void multi_threaded_server(int sock, int n_thread)
+{
+	/* Initialize mutex lock and semaphores */
+	pthread_mutex_init(&mutex, NULL);
+  	sem_init(&sem_empty, 0, MAX_REQUEST);
+	sem_init(&sem_full, 0, 0);
+		
+	/* Listener thread. */
+	pthread_t workers[n_thread];
+	pthread_t listener;
+	
+	sem_init(&sem_empty, 0, MAX_REQUEST);
+  	sem_init(&sem_full, 0, 0);
+
+	int thread_status, i;
+
+	pthread_create(&listener, NULL, listen, NULL);
+
+	int s;
+	s = accept(sock, NULL, NULL);
+	if (s < 0) return;
+
+	sem_wait(&sem_empty);
+	pthread_mutex_lock(&mutex);
+
+	request[in] = s;
+	in = (in + 1) % MAX_REQUEST;
+
+	pthread_mutex_unlock(&mutex);
+	sem_post(&sem_full);
+
+	for (i = 0; i < n_thread; i++) {
+		thread_status = pthread_tryjoin_np(workers[i], NULL);
+		
+		if (thread_status == EBUSY) {
+			continue;
+		}
+
+		pthread_create(&workers[i], NULL, consumer, (void *) i);
+		sem_post(&sem_empty);
+	}
+
+}
+
 
 
 int main(int argc, char *argv[])

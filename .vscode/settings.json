@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "webserver.h": "c",
+        "semaphore.h": "c"
+    }
+}
