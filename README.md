@@ -1,5 +1,3 @@
-Jacob Reiser
-
 For this project, I implemented a listener function to create
 a listener that waited for requests from the clients before
 sending those requests to a shared buffer. This buffer was handled 
